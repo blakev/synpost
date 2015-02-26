@@ -8,6 +8,9 @@ import argparse
 import synpost
 import synpost.default_config
 
+# bootstrap the plugins that are installed
+import synpost.plugins
+
 from synpost.objects.site import Site
 from synpost.objects.theme import Theme
 

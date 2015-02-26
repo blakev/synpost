@@ -1,6 +1,6 @@
 __author__ = 'Blake'
 
-from basetypes import Asset, Category
+from basetypes import Asset, TextContentAsset
 
 import article, page, image, script, style
 

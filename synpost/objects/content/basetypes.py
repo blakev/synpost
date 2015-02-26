@@ -4,6 +4,7 @@ import os
 import re
 import json
 import time
+import types
 import mimetypes
 
 import markdown
@@ -11,10 +12,7 @@ import yaml
 from jinja2 import Template
 
 from synpost.fn.conversions import pretty_size, convert_sysdate, \
-    flatten_list, path_to_asset, clean_filename
-
-# root folders/categories for all items to go inside
-STATIC_CATEGORIES = ['articles', 'pages']
+    flatten_list, path_to_asset, clean_filename, merge_dicts
 
 # bootstrap mimetypes table with MARKDOWN extension
 mimetypes.types_map['.md'] = 'text/plain'
@@ -35,11 +33,15 @@ class Asset(object):
         self.filename = asset_obj.filename  # filename with extension
         self.ext = asset_obj.extension      # extension only
         self._type = asset_obj.type         # synthetic Asset type
-        self.meta = self.site.config.get('meta', {}) # default meta data about the site
 
-        self.metadata = self.default_meta_extraction()
+        # root metadata
+        self.metadata = merge_dicts(
+            self.get_filesystem_metadata(),
+            self.site.config.get('meta', {})
+        )
 
-    def default_meta_extraction(self):
+
+    def get_filesystem_metadata(self):
         stats = os.stat(self.path)
         meta = {
             'filename': self.filename,
@@ -149,9 +151,13 @@ class TextContentAsset(Asset):
         # get the content and the meta data blocks from the text file
         extracted = self.__extract(content_lines)
 
+        # get the metadata blocks and the content blocks from the text asset
         self.extracted_data = {
             'meta': extracted[0], 'content': extracted[1]
         }
+
+        # combine the inset config meta data into the root of the metaobject passed to jinja
+        self.metadata = merge_dicts(self.metadata, self.extracted_data.get('meta', {}))
 
     def __preprocess_meta(self, meta_block):
         template = Template(meta_block)
@@ -185,21 +191,6 @@ class TextContentAsset(Asset):
             content_block or ''
         )
 
-    def generate_metadata(self, **kwargs):
-        a = self.default_meta_extraction().items()
-        b = self.extracted_data.get('meta', {}).items()
-        c = self.meta.items()
-
-        new_meta = dict(a + b + c)
-
-        for key, value in kwargs.items():
-            exists = new_meta.setdefault(key, value)
-
-            if exists != value:
-                new_meta[key] = flatten_list(value, new_meta[key])
-
-        return new_meta
-
     @staticmethod
     def extract_meta_data(meta_lines):
         return yaml.load(meta_lines)
@@ -210,7 +201,7 @@ class TextContentAsset(Asset):
 
     @property
     def jinja_obj(self):
-        return {
+        x = {
             'extra': {
                 'href': self.href,
                 'page_id': self.identifiers[0],
@@ -225,6 +216,7 @@ class TextContentAsset(Asset):
                 'pages': self.site.all_pages
             }
         }
+        return x
 
     @property
     def as_HTML(self):
@@ -238,49 +230,3 @@ class TextContentAsset(Asset):
         template = Template(self.extracted_data.get('content', ''))
         template = template.render(**self.jinja_obj)
         return template
-
-
-class Category(object):
-    def __init__(self, raw):
-        self.raw_category = raw
-
-    @staticmethod
-    def category_from_filename(f):
-        pass
-
-    @staticmethod
-    def category_from_path(p, base_path = None):
-        drive, parts = os.path.splitdrive(p)
-
-        if not base_path:
-            pass
-
-        else:
-            # remove the source base directory from the path;
-            parts = parts.split(base_path)[-1]
-            # split the filename from the folders in front of it
-            # get all of the pieces except the filename on the end
-            parts = parts.split(os.path.sep)[:-1]
-            # clean up the seperator junk
-            parts = [x.lower() for x in parts if x != '']
-            # TEST_ENV/articles/cars/red/redcar vroom.md => ['cars', 'red']
-            return [p for p in parts if p not in STATIC_CATEGORIES]
-
-
-    @staticmethod
-    def analyze(asset):
-        # add the folder path leading up to the root of the project
-        # as category types to the article/page/asset
-        if asset.site.config.get('folder_as_categories', True):
-            path_categories = Category.category_from_path(asset.path, asset.site.config.get('project_source', '.'))
-        else:
-            path_categories = []
-
-        # combine the methods of category analysis
-        c = asset.meta.get('categories', []) + path_categories
-
-        # filter the categories so they're all lowercase
-        c = map(lambda x: x.lower(), c)
-
-        return c
-

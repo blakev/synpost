@@ -3,23 +3,32 @@ __author__ = 'Blake'
 import os
 import re
 import json
+import shutil
 
-from fn.io import create_folders_from_dict
-from fn.io import collect_files_from
-
-import objects.content as Content
-from objects.action import Action
+import synpost.objects.content as Content
+from synpost.objects.action import Action
+from synpost.fn.io import collect_files_from, create_folders_from_dict
+from synpost.fn.conversions import path_to_asset
 
 MARKDOWN_FILES = re.compile(r'[\s\S]+\.md', re.I)
 
 required_folders = {
     'static': ['imgs', 'js', 'css', 'fonts'],
-    'pages': []
+    'pages': [],
+    'articles': []
 }
 
+content_locations = {
+    'articles': ['articles'],
+    'pages': ['pages'],
+    'styles': ['static', 'css'],
+    'scripts': ['static', 'js'],
+    'images': ['static', 'imgs']
+}
 
 class Build(Action):
     def __init__(self, site):
+        self.site = site
         self.description = 'BuildAction'
         self.config = site.config
 
@@ -28,66 +37,76 @@ class Build(Action):
         self.dest_folder = self.config['project_destination']
         self.source_folder = self.config['project_source']
 
-        self.site_config = self.get_blog_config_file()
+        self.go_pipeline = [
+            self.delete_old_folders,
+            self.create_new_folders,
+            self.copy_static_assets,
+            self.build_dynamic_assets,
+            self.copy_index
+        ]
+
 
     def go(self):
-        self.verify_folders()
+        results = []
+        for fn in self.go_pipeline:
+            results.append(fn())
+        return results
 
 
-
-    def help(self):
-        pass
-
-    def get_blog_config_file(self):
-        config_file = os.path.join(self.source_folder, 'config.json')
-
-        if not os.path.exists(config_file):
-            raise EnvironmentError('Cannot find %s' % config_file)
-
+    def delete_old_folders(self):
         try:
-            return json.load(open(config_file, 'r'))
+            shutil.rmtree(self.dest_folder)
+            os.makedirs(self.dest_folder)
         except Exception, e:
-            print e
+            return e
+        else:
+            return True
 
-        return {}
 
-    def verify_folders(self):
-        create_key = 'allow_folder_creation'
-        can_create = self.config[create_key]
+    def create_new_folders(self):
+        # create the folder tree
+        try:
+            create_folders_from_dict(self.dest_folder, required_folders, True)
+        except Exception, e:
+            return e
+        else:
+            return True
 
-        if not os.path.exists(self.dest_folder):
-            if can_create:
-                os.makedirs(self.dest_folder)
+    def __static_assets(self, is_static = True):
+        return filter(lambda x: x.is_static == is_static, self.site.all_items)
+
+    def copy_static_assets(self):
+        for item in self.__static_assets(True):
+            # get the new path relative to destination folder
+            path_prefix = list(content_locations[item.type])
+            # affix the original filename to the end of the path
+            path_prefix.append(item.filename)
+            # insert the project destination (build dir) to the front
+            path_prefix.insert(0, self.dest_folder)
+            # join the whole path together
+            new_path = os.path.join(*path_prefix)
+            # copy the original file into the new path we just created
+            shutil.copy2(item.path, new_path)
+        return True
+
+    def build_dynamic_assets(self):
+        for item in self.__static_assets(False):
+            # extract path and new file name
+            npath, nname = os.path.split(item.href)
+            # append new folder path with project destination (build dir)
+            if item.type == 'pages':
+                new_path = os.path.join(self.dest_folder, 'pages')
             else:
-                raise ValueError('%s does not exist, must set %s to "true"' % self.dest_folder, create_key)
-        create_folders_from_dict(self.dest_folder, required_folders, overwrite = can_create)
+                new_path = os.path.join(self.dest_folder, npath)
 
-    def __collect(self, subfolder, with_regex = None):
-        from_folder = os.path.join(self.source_folder, subfolder)
+            # create the path to the folder
+            if not os.path.exists(new_path):
+                os.makedirs(new_path)
+            with open(os.path.join(new_path, nname), 'w') as out_file:
+                out_file.write(item.as_HTML)
+        return True
 
-        if not os.path.exists(from_folder) or not os.path.isdir(from_folder):
-            raise EnvironmentError('Could not find folder %s' % from_folder)
-
-        return list(
-            collect_files_from(
-                from_folder , with_regex
-            )
-        )
-
-    def collect_articles(self):
-        return []
-        # kwargs = {
-        #     'folder_categories': self.config['subfolder_as_category'],
-        #     'project_config': self.config
-        # }
-        # return Content.article.parse_from_list(self.__collect('articles', MARKDOWN_FILES), **kwargs)
-
-    def collect_static_assets(self):
-        return self.__collect('static', MARKDOWN_FILES)
-
-    def collect_templates(self):
-        return self.__collect('templates', MARKDOWN_FILES)
-
-    def collect_pages(self):
-        return self.__collect('pages', MARKDOWN_FILES)
-
+    def copy_index(self):
+        index_path = os.path.join(self.dest_folder, 'pages', 'index.html')
+        shutil.copy2(index_path, self.dest_folder)
+        return True

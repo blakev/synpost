@@ -20,6 +20,21 @@ class EmptySite(object):
     def all_items(self):
         return [item for itemtypes in self.collected_items.values() for item in itemtypes]
 
+    @property
+    def ordered_items(self):
+        return sorted(self.all_items, key = lambda item: item.created, reverse = True)
+
+    @property
+    def ordered_articles(self):
+        return filter(lambda x: x.type == 'articles', self.ordered_items)
+
+    @property
+    def all_pages(self):
+        return filter(lambda x: x.type == 'pages', self.ordered_items)
+
+    def article_index(self, article):
+        return self.ordered_articles.index(article)
+
 
 class Site(EmptySite):
     def __init__(self, config, theme = None):
@@ -41,11 +56,7 @@ class Site(EmptySite):
 
         self.collected_items = self.__coerce()
 
-        for x in self.all_items:
-            print x
-            print x.as_HTML
-            print x.href, x.identifiers
-            print
+        self.update_articles_with_num()
 
 
     def __repr__(self):
@@ -74,6 +85,11 @@ class Site(EmptySite):
             )
         return collected_items
 
+    def update_articles_with_num(self):
+        articles = self.ordered_articles
+        for index, article in enumerate(articles):
+            article.id_number = index + 1
+            article.total_articles = len(articles)
 
     def compile(self):
         pass

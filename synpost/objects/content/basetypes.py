@@ -11,7 +11,7 @@ import yaml
 from jinja2 import Template
 
 from synpost.fn.conversions import pretty_size, convert_sysdate, \
-    flatten_list, path_to_asset
+    flatten_list, path_to_asset, clean_filename
 
 # root folders/categories for all items to go inside
 STATIC_CATEGORIES = ['articles', 'pages']
@@ -35,7 +35,7 @@ class Asset(object):
         self.filename = asset_obj.filename  # filename with extension
         self.ext = asset_obj.extension      # extension only
         self._type = asset_obj.type         # synthetic Asset type
-        self.meta = {}                      # default meta data about the file
+        self.meta = self.site.config.get('meta', {}) # default meta data about the site
 
         self.metadata = self.default_meta_extraction()
 
@@ -51,6 +51,10 @@ class Asset(object):
             'last_edited': {
                 'ctime': stats.st_mtime,
                 'pretty': convert_sysdate(stats.st_mtime, self.site.config.get('date_format', None))
+            },
+            'generated': {
+                'ctime': time.time(),
+                'pretty': convert_sysdate(time.time(), self.site.config.get('date_format', None))
             },
             'filesize': {
                 'bytes': stats.st_size,
@@ -83,6 +87,10 @@ class Asset(object):
 
 
     @property
+    def is_static(self):
+        return True
+
+    @property
     def type(self):
         return self._type
 
@@ -95,8 +103,20 @@ class Asset(object):
         return None # Implemented in the child types
 
     @property
+    def name(self):
+        return clean_filename(self.metadata.get('title', self.asset.valiname))
+
+    @property
     def shortname(self):
-        return '_'.join([c.lower() for c in self.metadata.get('title', self.asset.valiname).split()])[:30].strip('_')
+        return '_'.join([c.lower() for c in self.name.split()])[:30].strip('_')
+
+    @property
+    def created(self):
+        return self.metadata['created']['ctime']
+
+    @property
+    def updated(self):
+        return self.metadata['last_edited']['ctime']
 
     def to_JSON(self):
         return json.dumps(self.name, default=lambda x: x.__dict__, sort_keys=True)
@@ -185,6 +205,28 @@ class TextContentAsset(Asset):
         return yaml.load(meta_lines)
 
     @property
+    def is_static(self):
+        return False
+
+    @property
+    def jinja_obj(self):
+        return {
+            'extra': {
+                'href': self.href,
+                'page_id': self.identifiers[0],
+                'short_name': self.shortname,
+                'name': self.name,
+                'extension': self.extension
+            },
+            'meta': self.metadata,
+            'site': {
+                'articles': [(x.metadata.get('title', x.asset.valiname), x.href) for x in self.site.ordered_articles],
+                'article_index': None if not self.type == 'articles' else self.site.article_index(self),
+                'pages': self.site.all_pages
+            }
+        }
+
+    @property
     def as_HTML(self):
         template = self.as_MARKDOWN
         return markdown.markdown(
@@ -194,7 +236,7 @@ class TextContentAsset(Asset):
     @property
     def as_MARKDOWN(self):
         template = Template(self.extracted_data.get('content', ''))
-        template = template.render(**self.metadata)
+        template = template.render(**self.jinja_obj)
         return template
 
 

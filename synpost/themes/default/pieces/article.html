@@ -1,0 +1,11 @@
+{% macro short_article(title, content, summary_length=200) -%}
+    <div class="article.summary">
+        <div class="article.title">
+            <h2>{{ title }}}</h2>
+        </div>
+
+        <div class="article.content">
+            {{ content }}
+        </div>
+    </div>
+{% endmacro %}

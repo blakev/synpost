@@ -1,14 +1,21 @@
 import os
 import re
 import math
+import string
 from datetime import datetime
+
+NAMABLES = string.ascii_letters + string.digits + '_- '
+
+def clean_filename(s):
+    s = ''.join([c for c in s if c in NAMABLES])
+    s = re.sub(r'\W+', '_', s)
+    return s
 
 def path_to_asset(asset_obj):
     full_path = asset_obj.filepath
     upto_path = str(asset_obj.type).join(full_path.split(asset_obj.type)[1:])
     upto_path = asset_obj.type + ('/'.join(upto_path.strip(asset_obj.filename).split(os.path.sep)))
     return upto_path
-
 
 def flatten_list(*args):
     return list([item for sublist in args for item in sublist])

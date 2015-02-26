@@ -1,28 +1,30 @@
 
     <-- BACK AT 8:00 PM MST / 10:00 PM EST -->
 
-0) Upload to GITHUB and accept PRs
+
 *) Type annotations and code docstrings
 *) Test suite for the synpost.fn.* branch
 *) set up Travis-CI
 
 1) build default site scaffolding in themes/default
 2) finish the "build" action to create a basic structure from Site Object
-*) determine the best way to inner-reference assets from inside templates
 
-3) start "preview" action to launch HTTPSimpleServer to see site in browser
+** 3) start "preview" action to launch HTTPSimpleServer to see site in browser
 
 4) start plugin structure
 *) figure out how to let plugins into the action steps
 *) pre-process vs post-process plugins
-	- contact form plugin
-	- pagination plugin
-	- "Days old" plugin
-	- Google Analytics plugin
-	- Less/Sass plugin
-	- coffeescript plugin
-	- comments plugin
-	- linting plugin
+	- contact form plugin   ==> generate Page Object
+	- pagination plugin     ==> site.ordered_articles
+	    - prev/next         ==> jinja2: meta
+	- "Days old" plugin     ==> javascript: compute date created
+	- Google Analytics plugin >
+	- Less/Sass plugin      ==> compile step
+	- comments plugin       ==> external comments
+	- linting plugin        ==> post-build
+	- RSS Feed              ==>
+	- articles index
+	- sitemap
 
 5) create a "minimal" theme that actually looks good
 

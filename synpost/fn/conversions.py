@@ -6,10 +6,28 @@ from datetime import datetime
 
 NAMABLES = string.ascii_letters + string.digits + '_- '
 
+
+def flatten_list(*args):
+    return list([item for sublist in args for item in sublist])
+
+
+def merge_dicts(*dicts):
+    def merge(a, b):
+        z = a.copy()
+        z.update(b)
+        return z
+    x = {}
+    for d in dicts:
+        x = merge(x, d)
+    return x
+
+
+
 def clean_filename(s):
     s = ''.join([c for c in s if c in NAMABLES])
     s = re.sub(r'\W+', '_', s)
     return s
+
 
 def path_to_asset(asset_obj):
     full_path = asset_obj.filepath
@@ -17,8 +35,7 @@ def path_to_asset(asset_obj):
     upto_path = asset_obj.type + ('/'.join(upto_path.strip(asset_obj.filename).split(os.path.sep)))
     return upto_path
 
-def flatten_list(*args):
-    return list([item for sublist in args for item in sublist])
+
 
 def convert_sysdate(ordinal, format):
     if format is None:

@@ -4,6 +4,8 @@ import os
 import re
 from collections import namedtuple
 
+from jinja2 import Environment as JinjaEnvironment, FileSystemLoader as JinjaLoader
+
 from synpost.fn.io import generic_collect
 
 ThemeFile = namedtuple('ThemeFile', 'filename valiname filepath extension type')
@@ -38,9 +40,21 @@ class Theme(object):
         for ftype, identity in self.collection_points.items():
             self.collected_items[ftype] = generic_collect(identity[0], identity[1], ftype, ThemeFile)
 
+        self.jinja_environment = self.collection_points['pieces'][0] # path the pieces folder
+        self.jinja_environment = JinjaEnvironment(loader=JinjaLoader(self.jinja_environment), cache_size=500)
+
     def get(self, object_type):
         objects = self.collected_items.get(object_type.lower(), None)
         return [] if not objects else objects
+
+
+    def asset_by_filename(self, asset_type, filename):
+        asset_collection = self.collected_items.get(asset_type.lower(), self.collection_points['pieces'])
+        candidates = filter(lambda theme_file: theme_file.filename.lower() == filename.lower(), asset_collection)
+        if not candidates:
+            return None
+        else: return candidates[0]
+
 
     def validated(self):
         our_set = self.validation_set

@@ -106,7 +106,7 @@ class Asset(object):
 
     @property
     def name(self):
-        return clean_filename(self.metadata.get('title', self.asset.valiname))
+        return clean_filename(self.metadata.get('title', self.asset.valiname)).lower()
 
     @property
     def shortname(self):
@@ -132,10 +132,10 @@ class Asset(object):
         return ''.join(lines)
 
     def __repr__(self):
-        return self.to_JSON()
+        return str(self)
 
     def __str__(self):
-        return '<Asset.%s filename: %s>' % (self.type.capitalize(), str(self.filename))
+        return '<Asset.%s filename: "%s">' % (self.type.capitalize(), str(self.filename))
 
 
 class TextContentAsset(Asset):

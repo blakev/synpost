@@ -33,3 +33,4 @@
         6) create rough class for "hoist" (upload with FTP)
         *) 	- host on Github plugin
         7) create the setup.py script
+        8) Multiple actions in the plugin (aka, "build" and "draft" and "lift")

@@ -1,11 +1,21 @@
-{% macro short_article(title, content, summary_length=200) -%}
-    <div class="article.summary">
-        <div class="article.title">
-            <h2>{{ title }}}</h2>
-        </div>
+<h1>{{ meta.title }}</h1>
+<h4>{{ meta.author }}</h4>
 
-        <div class="article.content">
-            {{ content }}
-        </div>
-    </div>
-{% endmacro %}
+{% set prevnext = plugins.prevnext[extra.page_id] %}
+
+{% if prevnext.prev_article %}
+    <a href="{{ plugins.uuid_map[prevnext.prev_article].href }}">older article</a> -
+{% endif %}
+
+<a href="/index.html">home</a>
+
+{% if prevnext.next_article %}
+    - <a href="{{ plugins.uuid_map[prevnext.next_article].href }}">new article</a>
+{% endif %}
+
+<hr>
+
+{{ rendered_content }}
+
+
+{% include "footer.html" %}

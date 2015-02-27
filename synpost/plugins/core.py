@@ -1,33 +1,58 @@
 __author__ = 'Blake'
+import copy
 
+from functools import partial
 from synpost.fn.helpers import min_max
 
 class PluginMeta(type):
     def __new__(cls, name, parents, dct):
         if not 'plugin' in dct:
-            dct['plugin'] = name.lower().strip('plugin')
+            dct['plugin'] = name.lower().replace('plugin', '')
+
+        if not 'action' in dct:
+            dct['action'] = 'build'
+
+        if not 'priority' in dct:
+            dct['priority'] = 100
 
         return super(PluginMeta, cls).__new__(cls, name, parents, dct)
+
+    def __call__(cls, Action):
+        a = copy.copy(Action)
+        return partial(cls.execute, a)
+
+    def __str__(cls):
+        return 'plugin-%s' % cls.plugin
+
 
 class PluginCore(object):
     __metaclass__ = PluginMeta
 
-    def __init__(self, Action, priority = None, explicit_step = None):
-        self.Action = Action
+    plugin = 'core'
+    action = 'core'
+    priority = -1
 
-        if priority:
-            self.priority = min_max(0, 100, priority)
+    def __init__(self, Action):
+        self.go_fn = partial(self.execute, Action)
 
-        if explicit_step:
-            self.priority = self.priority_from_action(explicit_step)
-
-        # if we didn't tell the plugin where it should run
-        # in the `go` stack, we'll put it at the bottom
-        if priority is None and explicit_step is None:
-            self.priority = 100
+    @staticmethod
+    def execute(Action):
+        raise NotImplementedError
+        # return True/False
 
 
-    def priority_from_action(self, step):
-        print self.Action.go_pipeline
 
-        return 0
+class SitePluginCore(PluginCore):
+    __metaclass__ = PluginMeta
+
+    plugin = 'site_core'
+    action = 'site'
+    priority = -1
+
+    def __init__(self, Site):
+        super(SitePluginCore, self).__init__(Site)
+
+    @staticmethod
+    def execute(Site):
+        raise NotImplementedError
+        # return Site

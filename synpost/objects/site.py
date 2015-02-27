@@ -7,6 +7,7 @@ from synpost.fn.io import generic_collect
 from synpost.fn.bootstrapping import load_from_list
 from synpost.fn.serialization import TupleEncoder
 
+from synpost.plugins.core import PluginMeta as PluginType
 from synpost.objects.theme import DefaultTheme, Theme
 from synpost.objects.content import all_content_types
 
@@ -14,11 +15,36 @@ class EmptySite(object):
     def __init__(self, *args, **kwargs):
         self.config = {}
         self.theme = None
-        self.collected_items = {}
+        self.site_items = {}
+        self.metadata = {}
+
+        self.plugins = kwargs.get('plugins', [])
+        self.go_pipeline = kwargs.get('pipeline', [])
+
+        self.insert_plugins_to_pipeline()
+
+    def go(self):
+        results = self
+        for plugin in self.go_pipeline:
+            results = plugin(results)()
+        return results
+
+    def insert_plugins_to_pipeline(self):
+        # taken from synpost.objects.action.Action fn insert_plugins_to_pipeline
+        sorted_plugins = sorted(self.plugins, key=lambda x: x.priority)
+        for index, fn in enumerate(self.go_pipeline):
+            if sorted_plugins:
+                top_plugin = sorted_plugins[0]
+                if not isinstance(top_plugin, PluginType):
+                    raise ValueError('%s not of type<PluginType>')
+            score = int((float(index) / len(self.go_pipeline)) * 100)
+            if top_plugin.priority <= score:
+                self.go_pipeline.insert(index, sorted_plugins.pop(0))
+        self.go_pipeline.extend(sorted_plugins)
 
     @property
     def all_items(self):
-        return [item for itemtypes in self.collected_items.values() for item in itemtypes]
+        return [item for itemtypes in self.site_items.values() for item in itemtypes]
 
     @property
     def ordered_items(self):
@@ -37,8 +63,8 @@ class EmptySite(object):
 
 
 class Site(EmptySite):
-    def __init__(self, config, theme = None):
-        super(Site, self).__init__()
+    def __init__(self, config, theme = None, plugins = []):
+        super(Site, self).__init__(plugins = plugins)
 
         self.config = config
         self.theme = DefaultTheme if not theme else theme
@@ -54,16 +80,16 @@ class Site(EmptySite):
             ('styles', [self.theme.get('styles')])
         ]
 
-        self.collected_items = self.__coerce()
+        self.site_items = self.__coerce()
 
         self.update_articles_with_num()
 
 
     def __repr__(self):
-        return json.dumps(self.as_JSON(), indent = 4, cls = TupleEncoder)
+        return str(self.site_items)
 
     def as_JSON(self):
-        return {self.config['site_name']: self.collected_items}
+        return {self.config['site_name']: self.site_items}
 
     def __collect(self, path, regex = None, ftype = None):
         if not ftype:
@@ -71,19 +97,19 @@ class Site(EmptySite):
         return generic_collect(os.path.join(self.config['project_source'], path), regex, ftype)
 
     def __coerce(self):
-        collected_items = {}
+        site_items = {}
         for content_type, appendit in self.load_em:
             if not appendit:
                 appendit = []
             temp_files = self.__collect(content_type)
             for item in appendit:
                 temp_files.extend(item)
-            collected_items[content_type] = list(
+            site_items[content_type] = list(
                 load_from_list(
                     temp_files, all_content_types[content_type], site = self
                 )
             )
-        return collected_items
+        return site_items
 
     def update_articles_with_num(self):
         articles = self.ordered_articles

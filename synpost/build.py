@@ -5,6 +5,8 @@ import re
 import json
 import shutil
 
+import synpost.globals as GLOBALS
+
 import synpost.objects.content as Content
 from synpost.objects.action import Action
 from synpost.fn.io import collect_files_from, create_folders_from_dict
@@ -27,17 +29,22 @@ content_locations = {
 }
 
 class Build(Action):
-    def __init__(self, site):
+    def __init__(self, site, plugins = None):
+        if not plugins:
+            plugins = []
+
         self.site = site
+
+        if self.site.plugins:
+            self.site = self.site.go()
+
         self.description = 'BuildAction'
         self.config = site.config
-
-        super(Build, self).__init__()
 
         self.dest_folder = self.config['project_destination']
         self.source_folder = self.config['project_source']
 
-        self.go_pipeline = [
+        pipeline = [
             self.delete_old_folders,
             self.create_new_folders,
             self.copy_static_assets,
@@ -45,12 +52,9 @@ class Build(Action):
             self.copy_index
         ]
 
+        super(Build, self).__init__(plugins, pipeline)
 
-    def go(self):
-        results = []
-        for fn in self.go_pipeline:
-            results.append(fn())
-        return results
+        print self.site.extra
 
 
     def delete_old_folders(self):
@@ -108,5 +112,11 @@ class Build(Action):
 
     def copy_index(self):
         index_path = os.path.join(self.dest_folder, 'pages', 'index.html')
-        shutil.copy2(index_path, self.dest_folder)
+
+        if not os.path.exists(index_path):
+            with open(os.path.join(self.dest_folder, 'index.html'), 'w') as out_file:
+                out_file.writelines(GLOBALS.DEFAULT_INDEX_HTML)
+        else:
+            shutil.copy2(index_path, self.dest_folder)
+
         return True

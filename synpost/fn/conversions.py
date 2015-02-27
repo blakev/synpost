@@ -2,24 +2,78 @@ import os
 import re
 import math
 import string
+import collections
 from datetime import datetime
 
 NAMABLES = string.ascii_letters + string.digits + '_- '
 
 
-def flatten_list(*args):
-    return list([item for sublist in args for item in sublist])
+def flatten_list(*somelist):
+    """ Takes one or more lists of lists and returns a single list
+    >>> flatten_list([1,2,3,4])
+    [1, 2, 3, 4]
 
+    >>> flatten_list([[1,2],[3,4]])
+    [1, 2, 3, 4]
+
+    >>> flatten_list(None)
+    Traceback (most recent call last):
+        ...
+    TypeError: 'NoneType' object is not iterable
+
+    >>> flatten_list([])
+    []
+
+    >>> flatten_list('blake')
+    ['b', 'l', 'a', 'k', 'e']
+
+    >>> flatten_list([[1],[[2],[3]],[4,5,6],7])
+    [1, 2, 3, 4, 5, 6, 7]
+
+    >>> flatten_list([[1],[[2],[3]],[4,5,6],[7]])
+    [1, 2, 3, 4, 5, 6, 7]
+
+    """
+    def flatten(x):
+        for element in x:
+            if isinstance(element, collections.Iterable) and not isinstance(element, basestring):
+                for sub_element in flatten(element):
+                    yield sub_element
+            else:
+                yield element
+
+    if not somelist:
+        return []
+
+    return list(flatten([list(flatten(x)) for x in somelist]))
 
 def merge_dicts(*dicts):
+    """ Takes N number of dicts and updates them to the left-most dict
+
+    >>> merge_dicts({})
+    {}
+    >>> merge_dicts({}, {})
+    {}
+    >>> merge_dicts({'a': 1}, {'b': 2})
+    {'a': 1, 'b': 2}
+    >>> merge_dicts({'a': 1}, {})
+    {'a': 1}
+    >>> merge_dicts({'a': {'a': 1}}, {'a': {'b': 2}})
+    {'a': {'b': 2}}
+    >>> merge_dicts(None)
+    {}
+    """
     def merge(a, b):
         z = a.copy()
         z.update(b)
         return z
     x = {}
     for d in dicts:
+        if not d:
+            d = {}
         x = merge(x, d)
     return x
+
 
 
 
@@ -82,3 +136,8 @@ def size_from_pretty(str_size):
             num = num * mul
 
     return num
+
+
+if __name__ == '__main__':
+    import doctest
+    doctest.testmod()

@@ -7,6 +7,7 @@ import argparse
 
 import synpost
 import synpost.default_config
+from synpost.globals import Values as Globals
 
 # bootstrap the plugins that are installed
 import synpost.plugins.enabled_plugins as plugins
@@ -83,13 +84,18 @@ def main(conf=None):
     do_action = conf['namespace'].action
 
     # None, str, or type(Theme)
-    theme = conf['namespace'].theme
+    theme = conf.get('theme', None)
 
     # if theme is a string try and load the specified theme
     # failure case will return None, which loads the default theme
     # style in Site.__init__(..)
     if isinstance(theme, str):
-        theme = Theme.theme_from_name(theme)
+        proj_source = conf.get('project_source', None)
+        if not proj_source:
+            additional_paths = None
+        else:
+            additional_paths = [os.path.join(str(proj_source), x) for x in Globals.JINJA_ADDITIONAL_FOLDERS]
+        theme = Theme.theme_from_name(theme, additional_paths)
 
     # gather the pre-site built plugins
     site_plugins = get_plugins_for_action('site', prefix = 'siteplugin')

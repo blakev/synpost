@@ -5,7 +5,7 @@ import re
 import json
 import shutil
 
-import synpost.globals as GLOBALS
+from synpost.globals import Values as Globals
 
 import synpost.objects.content as Content
 from synpost.objects.action import Action
@@ -114,7 +114,7 @@ class Build(Action):
 
         if not os.path.exists(index_path):
             with open(os.path.join(self.dest_folder, 'index.html'), 'w') as out_file:
-                out_file.writelines(GLOBALS.DEFAULT_INDEX_HTML)
+                out_file.writelines(Globals.DEFAULT_INDEX_HTML)
         else:
             shutil.copy2(index_path, self.dest_folder)
 

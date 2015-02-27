@@ -20,6 +20,8 @@ mimetypes.types_map['.md'] = 'text/plain'
 import synpost.objects
 
 class Asset(object):
+    theme_piece = 'generic.html'
+
     def __init__(self, asset_obj, site = None):
         # initialize with a site's shell if we don't give it one
         # this will allow functions that rely on the site's properties
@@ -35,6 +37,7 @@ class Asset(object):
         self._type = asset_obj.type         # synthetic Asset type
 
         # root metadata
+        self.plugin_metadata = {}
         self.metadata = merge_dicts(
             self.get_filesystem_metadata(),
             self.site.config.get('meta', {})
@@ -74,23 +77,26 @@ class Asset(object):
             'extension': self.extension or self.ext.strip('.')
         }
 
-        return '{type}/{date}/{name}.{extension}'.format(**cleans)
+        return '/{type}/{date}/{name}.{extension}'.format(**cleans)
 
     @property
     def identifiers(self):
-        meta = self.metadata
-        the_year = convert_sysdate(meta['created']['ctime'], '%Y')
-        return [
-            '%s-%s' % (the_year, hex(int(meta['created']['ctime']) & 0xffffff).split('x')[1]),
-            self.shortname,
-            path_to_asset(self.asset) + self.shortname,
-            self.href
-        ]
+        return {
+            'uuid': self.uuid,
+            'shortname': self.shortname,
+            'asset_path': path_to_asset(self.asset) + self.shortname,
+            'href': self.href
+        }
 
 
     @property
     def is_static(self):
         return True
+
+    @property
+    def uuid(self):
+        the_year = convert_sysdate(self.metadata['created']['ctime'], '%Y')
+        return '%s-%s' % (the_year, hex(int(self.metadata['created']['ctime']) & 0xffffff).split('x')[1])
 
     @property
     def type(self):
@@ -202,9 +208,10 @@ class TextContentAsset(Asset):
     @property
     def jinja_obj(self):
         x = {
+            'plugins': self.plugin_metadata,
             'extra': {
                 'href': self.href,
-                'page_id': self.identifiers[0],
+                'page_id': self.identifiers['uuid'],
                 'short_name': self.shortname,
                 'name': self.name,
                 'extension': self.extension
@@ -217,6 +224,10 @@ class TextContentAsset(Asset):
             }
         }
         return x
+
+    @property
+    def finalized_html(self):
+        return self.as_HTML
 
     @property
     def as_HTML(self):

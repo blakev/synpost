@@ -58,6 +58,9 @@ class EmptySite(object):
     def all_pages(self):
         return filter(lambda x: x.type == 'pages', self.ordered_items)
 
+    def asset_by_uuid(self, uuid):
+        return filter(lambda x: x.uuid == uuid, self.ordered_articles)
+
     def article_index(self, article):
         return self.ordered_articles.index(article)
 
@@ -91,6 +94,11 @@ class Site(EmptySite):
     def as_JSON(self):
         return {self.config['site_name']: self.site_items}
 
+    def is_available(self, attr):
+        in_site = attr in self.__dict__.keys()
+        in_meta = attr in self.site_items.get('articles', [])[0].jinja_obj.keys()
+        return (not (in_site and in_meta)) and (not (in_site or in_meta))
+
     def __collect(self, path, regex = None, ftype = None):
         if not ftype:
             ftype = path
@@ -116,6 +124,10 @@ class Site(EmptySite):
         for index, article in enumerate(articles):
             article.id_number = index + 1
             article.total_articles = len(articles)
+
+    def set_from_plugin(self, meta_attribute, value):
+        for article in self.ordered_articles:
+            article.plugin_metadata[meta_attribute] = value
 
     def compile(self):
         pass

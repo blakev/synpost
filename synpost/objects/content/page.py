@@ -14,6 +14,6 @@ class Page(TextContentAsset):
 
     @property
     def as_HTML(self):
-        template = Template(self.extracted_data.get('content', ''))
+        template = self.site.theme.jinja_environment.get_template(self.filename)
         template = template.render(**self.jinja_obj)
         return template

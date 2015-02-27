@@ -6,7 +6,9 @@ from collections import namedtuple
 
 from jinja2 import Environment as JinjaEnvironment, FileSystemLoader as JinjaLoader
 
+from synpost.globals import Values as Globals
 from synpost.fn.io import generic_collect
+
 
 ThemeFile = namedtuple('ThemeFile', 'filename valiname filepath extension type')
 Valifile = namedtuple('ValiFile', 'valiname type')
@@ -24,10 +26,19 @@ class Theme(object):
     scripts_regex = re.compile(r'[\s\S]+\.(js|coffee)', re.I)
     images_regex = re.compile(r'[\s\S]+\.(gif|png|jpg)', re.I)
 
-    def __init__(self, name, at_path):
+    def __init__(self, name, at_path, additional_paths = None):
         self.name = name
         self.path = at_path
 
+        # non-theme folders that can use the jinja2 Environment in Theme object
+        if not additional_paths:
+            additional_paths = []
+        if not isinstance(additional_paths, list):
+            additional_paths = [additional_paths]
+
+        self.additional_paths = additional_paths
+
+        # the parts of a theme-pack
         self.collection_points = {
             'pieces': (os.path.join(self.path, 'pieces'), Theme.pieces_regex),
             'styles': (os.path.join(self.path, 'assets', 'css'), Theme.styles_regex),
@@ -41,7 +52,8 @@ class Theme(object):
             self.collected_items[ftype] = generic_collect(identity[0], identity[1], ftype, ThemeFile)
 
         self.jinja_environment = self.collection_points['pieces'][0] # path the pieces folder
-        self.jinja_environment = JinjaEnvironment(loader=JinjaLoader(self.jinja_environment), cache_size=500)
+        self.additional_paths.append(self.jinja_environment)
+        self.jinja_environment = JinjaEnvironment(loader=JinjaLoader(self.additional_paths), cache_size=Globals.JINJA_CACHE_FILES)
 
     def get(self, object_type):
         objects = self.collected_items.get(object_type.lower(), None)
@@ -74,20 +86,21 @@ class Theme(object):
 
 
     @staticmethod
-    def theme_from_folder(path):
+    def theme_from_folder(path, additional_paths = None):
         if not os.path.isdir(path):
             raise ValueError('%s is not a valid path' % path)
 
         # take the supplied path, split it on the OS seperator; either \ or /
         # then, take the last element which is our starting folder
         name = path.split(os.path.sep)[-1]
-        return Theme(name, path)
+        return Theme(name, path, additional_paths)
 
     @staticmethod
-    def theme_from_name(name):
+    def theme_from_name(name, additional_paths = None):
         if name not in Theme.find_themes():
             name = 'default'
-        return Theme.theme_from_folder(os.path.join(theme_folder, name))
+        return Theme.theme_from_folder(os.path.join(theme_folder, name), additional_paths)
+
 
 
 DefaultTheme = Theme.theme_from_name('default')

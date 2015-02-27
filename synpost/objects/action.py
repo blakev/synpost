@@ -17,9 +17,6 @@ class Action(object):
 
         self.insert_plugins_to_pipeline()
 
-    def help(self):
-        raise NotImplementedError
-
     def go(self):
         results = []
         for fn in self.go_pipeline:

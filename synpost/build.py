@@ -54,8 +54,6 @@ class Build(Action):
 
         super(Build, self).__init__(plugins, pipeline)
 
-        print self.site.extra
-
 
     def delete_old_folders(self):
         try:
@@ -96,7 +94,7 @@ class Build(Action):
     def build_dynamic_assets(self):
         for item in self.__static_assets(False):
             # extract path and new file name
-            npath, nname = os.path.split(item.href)
+            npath, nname = os.path.split(item.href.strip('/'))
             # append new folder path with project destination (build dir)
             if item.type == 'pages':
                 new_path = os.path.join(self.dest_folder, 'pages')
@@ -106,8 +104,9 @@ class Build(Action):
             # create the path to the folder
             if not os.path.exists(new_path):
                 os.makedirs(new_path)
+
             with open(os.path.join(new_path, nname), 'w') as out_file:
-                out_file.write(item.as_HTML)
+                out_file.write(item.finalized_html)
         return True
 
     def copy_index(self):

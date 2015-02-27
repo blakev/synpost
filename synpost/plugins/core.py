@@ -6,8 +6,8 @@ from synpost.fn.helpers import min_max
 
 class PluginMeta(type):
     def __new__(cls, name, parents, dct):
-        if not 'plugin' in dct:
-            dct['plugin'] = name.lower().replace('plugin', '')
+        if not 'name' in dct:
+            dct['name'] = name.lower().replace('plugin', '').replace('site', '')
 
         if not 'action' in dct:
             dct['action'] = 'build'

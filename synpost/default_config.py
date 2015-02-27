@@ -23,7 +23,13 @@ config_values = {
     "allow_folder_creation": True,
     "subfolder_as_category": True,
     "default_category": "default",
-    "main_as_index": True,
+    # will copy all the generated files in /pages into / (like index.html)
+    "page_files_in_root": True,
+    # will copy ALL the generated files in /pages, including files that overwrite theme assets
+    "assets_as_pages": False,
+    # asset file names that are not part of synpost.objects.theme.Theme.REQUIRED_PIECES
+    "additional_page_assets": ['contacts.html'],
+    # them to use when generating the static site
     "theme": "default",
     "date_format": "%B %d, %Y",
     "pagination": 5,

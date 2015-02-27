@@ -23,6 +23,7 @@ config_values = {
     "allow_folder_creation": True,
     "subfolder_as_category": True,
     "default_category": "default",
+    "main_as_index": True,
     "theme": "default",
     "date_format": "%B %d, %Y",
     "pagination": 5,
